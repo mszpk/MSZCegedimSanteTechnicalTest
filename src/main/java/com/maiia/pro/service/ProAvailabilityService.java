@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -34,51 +35,39 @@ public class ProAvailabilityService {
         return availabilityRepository.findByPractitionerId(practitionerId);
     }
     
-    public List<Availability> findAll() {
+    public Iterable<Availability> findAll() {
         return availabilityRepository.findAll();
     }
 
-    public List<Availability> generateAvailabilities(Integer practitionerId, List<TimeSlot> slots) {
-
-    	Map<LocalDate, Set<Availability>> map = new HashMap<LocalDate, Set<Availability>>();
+    public void generateAvailabilities(Integer practitionerId, List<TimeSlot> slots) {
 
     	final Duration criteria = Duration.ofMinutes(15);
-    	LocalDate currentDay = slots.get(0).getStartDate().toLocalDate();
-    	map.put(currentDay, new HashSet<>());
     	for (TimeSlot slot : slots) {
+    		Set<Availability> availabilities = new HashSet<Availability>();
     		final LocalTime endTime = slot.getEndDate().toLocalTime();
     		LocalDateTime currentStartDateTime = slot.getStartDate();
-    		Set<Availability> availabilities = map.get(currentDay);
-    		if (availabilities == null) {
-    			availabilities = new HashSet<Availability>();
-    		}
     		while (Duration.between(slot.getStartDate().toLocalTime(), endTime).compareTo(criteria) != 0) {
     			// si plus de 15 min => découper en créneaux horaires de 15 minutes
     			LocalDateTime currentEndDateTime = currentStartDateTime.plus(criteria);
-    			availabilities.add(new Availability(-1, practitionerId, currentStartDateTime, currentEndDateTime));
+    			Availability av = new Availability();
+    			av.setPractitionerId(practitionerId);
+    			av.setStartDate(currentStartDateTime);
+    			av.setEndDate(currentEndDateTime);
+    			availabilities.add(av);
     			currentStartDateTime = currentEndDateTime;
     		}
-    		map.put(currentDay, availabilities);
+    		availabilityRepository.saveAll(availabilities);
     	}
 
     	List<Appointment> appointments = appointmentRepository.findByPractitionerId(practitionerId);
     	for (Appointment app : appointments) {
-    		LocalTime appStartTime = app.getStartDate().toLocalTime();
-			LocalTime appEndTime = app.getEndDate().toLocalTime();
-			
-			map.get(app.getStartDate().toLocalDate()).removeIf(av -> appStartTime.equals(av.getStartDate().toLocalTime()) 
-					&& (appEndTime.equals(av.getEndDate().toLocalTime()) || appEndTime.isAfter(av.getEndDate().toLocalTime())));
+			removeObsoleteAvailabilities(practitionerId, app.getStartDate(), app.getEndDate());
     	}
     	
-    	List<Availability> result = new ArrayList<Availability>();
-    	map.values().stream().forEach(set -> result.addAll(set));
-    	
-    	availabilityRepository.saveAll(result);
-        return result;
     }
     
-    public boolean checkPractitionnerAvailability(Integer practitionerId, Integer patientId, LocalDateTime startDate, LocalDateTime endDate) {
-    	List<Availability> avs = availabilityRepository.findByCriteria(practitionerId, patientId, startDate, endDate);
+    public boolean checkPractitionnerAvailability(Integer practitionerId, LocalDateTime startDate, LocalDateTime endDate) {
+    	List<Availability> avs = availabilityRepository.findByCriteria(practitionerId, startDate, endDate);
     	LocalDateTime currentStartDate = startDate;
     	for (int cpt = 0; cpt < avs.size(); cpt++) {
     		if (!avs.get(cpt).getStartDate().equals(currentStartDate)) {
@@ -90,5 +79,9 @@ public class ProAvailabilityService {
     		return false;
     	}
     	return true;
+    }
+    
+    public void removeObsoleteAvailabilities(Integer practitionerId, LocalDateTime startDate, LocalDateTime endDateTime) {
+    	availabilityRepository.deleteByCriteria(practitionerId, startDate, endDateTime);
     }
 }
