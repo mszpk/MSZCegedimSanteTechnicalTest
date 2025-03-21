@@ -41,6 +41,7 @@ public class ProAppointmentController {
     @PostMapping("/appointment")
     public ResponseEntity<Object> addAppointment(@RequestBody AppointmentDTO dto) {
     	if (proAvailabilityService.checkPractitionnerAvailability(dto.getPractitionerId(), dto.getStartDate(), dto.getEndDate())) {
+    		proAvailabilityService.removeObsoleteAvailabilities(dto.getPractitionerId(), dto.getStartDate(), dto.getEndDate());
     		proAppointmentService.save(dto.getPatientId(), dto.getPractitionerId(), dto.getStartDate(), dto.getEndDate());
     		return ResponseEntity.ok().body(dto);
     	}
