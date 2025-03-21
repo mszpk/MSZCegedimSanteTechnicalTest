@@ -30,7 +30,7 @@ public class ProAppointmentService {
     	app.setPatientId(patientId);
     	app.setPractitionerId(practitionerId);
     	app.setStartDate(startDate);
-    	app.setEndDAte(endDate);
+    	app.setEndDate(endDate);
     	return appointmentRepository.save(app);
     }
 }
