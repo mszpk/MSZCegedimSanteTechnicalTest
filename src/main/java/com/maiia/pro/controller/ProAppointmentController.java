@@ -40,7 +40,7 @@ public class ProAppointmentController {
     
     @PostMapping(value ="/appointment", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<Object> addAppointment(@RequestParam("dto") AppointmentDTO dto) {
+    public ResponseEntity<Object> addAppointment(@RequestBody(required = true) AppointmentDTO dto) {
     	if (proAvailabilityService.checkPractitionnerAvailability(dto.getPractitionerId(), dto.getStartDate(), dto.getEndDate())) {
     		proAvailabilityService.removeObsoleteAvailabilities(dto.getPractitionerId(), dto.getStartDate(), dto.getEndDate());
     		proAppointmentService.save(dto.getPatientId(), dto.getPractitionerId(), dto.getStartDate(), dto.getEndDate());
